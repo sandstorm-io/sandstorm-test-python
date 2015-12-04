@@ -1,0 +1,119 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Sandstorm test app</title>
+  </head>
+  <body>
+
+<style>
+* {
+  font-size: 14pt;
+}
+h1 {
+  font-size: 24pt;
+}
+h2 {
+  font-size: 18pt;
+}
+iframe {
+    display: block;
+}
+p {
+    margin: 0;
+}
+#session-id, #user-id, #username, #preferred-handle, #permissions, #user-pronouns {
+    background-color: #eeeeee;
+}
+</style>
+
+    <h1>Sandstorm test app</h1>
+    <p>App Version: <span id="app-version">{{app_version}}</span></p>
+    <pre id="randomId">{{ content }}</pre>
+
+    <section>
+      <h2>Save state</h2>
+      <form action="/" method="POST">
+        <label>New state: <input id="state" type="text" name="state"></input></label>
+        <button>Save new state</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Request data</h2>
+      <p>X-Sandstorm-Session-Id: <span id="session-id">{{session_id}}<span></p>
+      <p>X-Sandstorm-User-Id: <span id="user-id">{{user_id}}<span></p>
+      <p>X-Sandstorm-Username: <span id="username">{{username}}<span></p>
+      <p>X-Sandstorm-Preferred-Handle: <span id="preferred-handle">{{handle}}<span></p>
+      <p>X-Sandstorm-Permissions: <span id="permissions">{{permissions}}<span></p>
+      <p>X-Sandstorm-User-Pronouns: <span id="user-pronouns">{{pronouns}}<span></p>
+    </section>
+
+    <section>
+      <h2>setPath</h2>
+      <button id="setPath" onclick="setPath();">Set Path</button>
+    </section>
+
+    <section>
+      <h2>setTitle</h2>
+      <input id="title" type="text"></input>
+      <button id="setTitle" onclick="setTitle();">Set Title</button>
+    </section>
+
+    <section>
+      <h2>startSharing</h2>
+      <button id="startSharing" onclick="startSharing();">Start Sharing</button>
+    </section>
+
+    <section>
+      <h2>renderTemplate</h2>
+      <button id="renderTemplate" onclick="renderTemplate();">Render Template</button>
+      <iframe id="template-frame"></iframe>
+    </section>
+
+    <section>
+      <h2><a href="/reflect">Reflect a request</a></h2>
+    </section>
+
+<script type="text/javascript">
+
+function setPath() {
+  console.log('calling setPath');
+  window.parent.postMessage({setPath: '/setpath'}, "*");
+}
+
+function setTitle() {
+  var newTitle = document.getElementById('title').value;
+  console.log('calling setTitle(' + newTitle + ')');
+  window.parent.postMessage({setTitle: newTitle}, "*");
+}
+
+function startSharing() {
+  console.log('calling startSharing');
+  window.parent.postMessage({startSharing: {}}, "*");
+}
+
+function renderTemplate() {
+  window.parent.postMessage({ renderTemplate: {
+      rpcId: "0",
+      template: "$API_TOKEN\n$API_HOST",
+    }
+  }, "*");
+}
+
+var messageListener = function(event) {
+  console.log('got postMessage:');
+  console.log(event);
+  if (event.data.rpcId === '0') {
+    if (event.data.error) {
+      console.log("ERROR: " + event.data.error);
+    } else {
+      var el = document.getElementById('template-frame');
+      el.setAttribute('src', event.data.uri);
+    }
+  }
+}
+
+window.addEventListener('message', messageListener);
+</script>
+  </body>
+</html>
