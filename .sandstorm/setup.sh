@@ -64,4 +64,11 @@ if [ ! -e /usr/local/bin/capnp ]; then
 fi
 
 # Install pycapnp from PyPI, which should use the system libcapnp we just installed
-pip3 install pycapnp
+pip3 install pycapnp flask
+
+# Remove python3-dev, then remove any dependencies it pulled in.
+# We need python3-dev to make "pip3 install" work, but it adds 55 MB of stuff in /usr/lib/python3.4
+# (a folder which we need to include unconditionally because tracing is hard), so we remove it once
+# we're done installing from pip.
+apt-get -y remove python3-dev
+apt-get -y autoremove

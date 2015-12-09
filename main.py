@@ -31,11 +31,9 @@ pkgdef = capnp.load("/sandstorm-pkgdef.capnp",
                 "/opt/sandstorm/latest/usr/include",
             ]
         )
-
 CODE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 app = Flask(__name__)
-
 
 def get_bridge_cap_promise():
     # Connect to the socket exposed by sandstorm-http-bridge

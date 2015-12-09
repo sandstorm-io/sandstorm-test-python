@@ -159,7 +159,13 @@ const pkgdef :Spk.PackageDefinition = (
   # `spk dev` will write a list of all the files your app uses to this file.
   # You should review it later, before shipping your app.
 
-  alwaysInclude = ["opt/app/env", "opt/app/templates", "opt/app/main.py"],
+  alwaysInclude = [
+    "usr/lib/python3.4", # pull in the whole Python 3 runtime
+    "usr/lib/python3", # pull in any Debian pure-Python packages
+    "usr/local/lib/python3.4", # pull in any packages installed with pip
+    "opt/app/templates",
+    "opt/app/main.py",
+  ],
   # Fill this list with more names of files or directories that should be
   # included in your package, even if not listed in sandstorm-files.list.
   # Use this to force-include stuff that you know you need but which may
@@ -243,7 +249,6 @@ const myCommand :Spk.Manifest.Command = (
     # Note that this defines the *entire* environment seen by your app.
     (key = "PATH", value = "/usr/local/bin:/usr/bin:/bin"),
     (key = "USER", value = "sandstorm"),
-    (key = "HOME", value = "/var"),
     (key = "SANDSTORM", value = "1"),
     # Export SANDSTORM=1 into the environment, so that apps running within Sandstorm
     # can detect if $SANDSTORM="1" at runtime, switching UI and/or backend to use

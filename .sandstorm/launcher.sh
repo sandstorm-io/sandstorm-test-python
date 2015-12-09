@@ -39,4 +39,4 @@ set -euo pipefail
 cd /opt/app
 export HOME=/var
 [ -f /var/state ] || echo "initial state" > /var/state
-env/bin/python main.py
+/usr/bin/python3 main.py
