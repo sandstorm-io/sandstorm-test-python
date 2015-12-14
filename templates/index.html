@@ -94,8 +94,10 @@ function startSharing() {
 
 function renderTemplate() {
   window.parent.postMessage({ renderTemplate: {
-      rpcId: "0",
-      template: "$API_TOKEN\n$API_HOST",
+      rpcId: '0',
+      // This template is valid JSON, so you can just JSON.parse()
+      // it in the tests
+      template: '{\n  "token": "$API_TOKEN",\n  "host": "$API_HOST"\n}',
     }
   }, "*");
 }
@@ -109,6 +111,8 @@ var messageListener = function(event) {
     } else {
       var el = document.getElementById('template-frame');
       el.setAttribute('src', event.data.uri);
+      // Indicate in a test-friendly way that we've set the src
+      el.setAttribute('data-rendered', 'true');
     }
   }
 }
