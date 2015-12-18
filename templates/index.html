@@ -31,6 +31,20 @@ p {
     <pre id="randomId">{{ content }}</pre>
 
     <section>
+      <h2>Powerbox request</h2>
+      <button id='powerbox-request' onclick="doRequest();">Request SealedUiView</button>
+    </section>
+
+    <section>
+      <h2>Powerbox offer</h2>
+      <ul>
+      {% for cap in saved_caps %}
+        <li><button class="cap" data-cap-id="{{cap.token}}" onclick="doOffer('{{cap.token}}');">{{cap.token}}</button></li>
+      {% endfor%}
+      </ul>
+    </section>
+
+    <section>
       <h2>Save state</h2>
       <form action="/" method="POST">
         <label>New state: <input id="state" type="text" name="state"></input></label>
@@ -76,6 +90,21 @@ p {
 
 <script type="text/javascript">
 
+function doRequest() {
+  window.parent.postMessage({ powerboxRequest: {
+    rpcId: "1",
+    // TODO: specify a query involving SealedUiView
+  }}, "*");
+}
+
+function doOffer(capId) {
+  console.log("should offer", capId);
+  var xhr = new XMLHttpRequest();
+  var capOfferUrl = window.location.protocol + '//' + window.location.host + '/caps/' + capId;
+  xhr.open("POST", capOfferUrl, true);
+  xhr.send();
+}
+
 function setPath() {
   console.log('calling setPath');
   window.parent.postMessage({setPath: '/#setpath'}, "*");
@@ -113,6 +142,30 @@ var messageListener = function(event) {
       el.setAttribute('src', event.data.uri);
       // Indicate in a test-friendly way that we've set the src
       el.setAttribute('data-rendered', 'true');
+    }
+  } else if (event.data.rpcId === '1') {
+    console.log("request completed");
+    if (event.data.error) {
+      console.log("error:", event.data.error);
+    } else {
+      console.log("got token!");
+      console.log(event.data.token);
+      var xhr = new XMLHttpRequest();
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            console.log("ok!");
+            document.location.reload(true);
+          } else {
+            console.log("failed to save token");
+          }
+        }
+      };
+      var capSaveUrl = window.location.protocol + '//' + window.location.host + '/caps';
+      xhr.open("POST", capSaveUrl, true);
+      var formData =new FormData();
+      formData.append("token", event.data.token);
+      xhr.send(formData);
     }
   }
 }
