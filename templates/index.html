@@ -16,13 +16,16 @@ h2 {
   font-size: 18pt;
 }
 iframe {
-    display: block;
+  display: block;
 }
 p {
-    margin: 0;
+  margin: 0;
 }
 #session-id, #user-id, #username, #preferred-handle, #permissions, #user-pronouns {
-    background-color: #eeeeee;
+  background-color: #eeeeee;
+}
+.token {
+  font-family: monospace;
 }
 </style>
 
@@ -32,16 +35,49 @@ p {
 
     <section>
       <h2>Powerbox request</h2>
-      <button id='powerbox-request' onclick="doRequest();">Request SealedUiView</button>
+      <ul>
+        <li><button id='powerbox-request-uiview' onclick="doRequest(interfaces.uiView);">Request UiView</button></li>
+        <li><button id='powerbox-request-ipnetwork' onclick="doRequest(interfaces.ipNetwork);">Request IpNetwork</button></li>
+        <li><button id='powerbox-request-ipinterface' onclick="doRequest(interfaces.ipInterface);">Request IpInterface</button></li>
+      </ul>
     </section>
 
     <section>
       <h2>Powerbox offer</h2>
-      <ul>
-      {% for cap in saved_caps %}
-        <li><button class="cap" data-cap-id="{{cap.token}}" onclick="doOffer('{{cap.token}}');">{{cap.token}}</button></li>
-      {% endfor%}
-      </ul>
+      <table>
+        <thead>
+          <tr>
+            <td>Type</td>
+            <td>SturdyRef</td>
+            <td>Actions</td>
+          </tr>
+        </thead>
+        <tbody>
+        {% for cap in saved_caps %}
+          <tr>
+            {% if cap.descriptor.tags[0].id == "15831515641881813735" %}
+              <td>UiView</td>
+            {% elif cap.descriptor.tags[0].id == "12214421258504904768" %}
+              <td>IpNetwork</td>
+            {% elif cap.descriptor.tags[0].id == "16369547182874744570" %}
+              <td>IpInterface</td>
+            {% else %}
+              <td>Unknown</td>
+            {% endif %}
+            <td><span class="token">{{cap.token}}</span></td>
+            <td>
+              {% if cap.descriptor.tags[0].id == "15831515641881813735" %}
+              <button class="offer-cap" data-cap-id="{{cap.token}}" onclick="doOffer('{{cap.token}}');">Offer</button>
+              {% elif cap.descriptor.tags[0].id == "12214421258504904768" %}
+              <button class="test-cap" data-cap-id="{{cap.token}}" onclick="useIpNetwork('{{cap.token}}');">Test</button>
+              {% elif cap.descriptor.tags[0].id == "16369547182874744570" %}
+              <button class="test-cap" data-cap-id="{{cap.token}}" onclick="useIpInterface('{{cap.token}}');">Listen</button>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor%}
+        </tbody>
+      </table>
     </section>
 
     <section>
@@ -90,14 +126,29 @@ p {
 
 <script type="text/javascript">
 
-function doRequest() {
+interfaces = {
+  uiView: "15831515641881813735",
+  // UiView's capnp id, as a base-10 string, since JS's
+  // numeric type can't handle 64-bit numbers.
+
+  ipNetwork: "12214421258504904768",
+  // Ditto IpNetwork's capnp id
+
+  ipInterface: "16369547182874744570",
+  // Ditto IpInterface
+
+  // And so on.  We probably won't test these all, but having them around is handy.
+  ipRemoteHost: "10402707569554174256",
+  tcpPort: "16911595059595970228",
+  udpPort: "14276742948984979918",
+};
+
+function doRequest(interfaceId) {
   window.parent.postMessage({ powerboxRequest: {
     rpcId: "1",
     query: [{
       tags: [{
-        // SealedUiView's capnp id, as a base-10 string, since JS's
-        // numeric type can't handle 64-bit numbers.
-        id: "10145426045091321204",
+        id: interfaceId,
       }],
     }],
   }}, "*");
@@ -109,6 +160,38 @@ function doOffer(capId) {
   var capOfferUrl = window.location.protocol + '//' + window.location.host + '/caps/' + capId;
   xhr.open("POST", capOfferUrl, true);
   xhr.send();
+}
+
+function useIpNetwork(token) {
+  var xhr = new XMLHttpRequest();
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState === 4) {
+      if (xhr.status !== 200) {
+        console.log("failed to use token");
+      }
+    }
+  };
+  var capTestUrl = window.location.protocol + '//' + window.location.host + '/test_ip_network_cap';
+  xhr.open("POST", capTestUrl, true);
+  var formData =new FormData();
+  formData.append("token", token);
+  xhr.send(formData);
+}
+
+function useIpInterface(token) {
+  var xhr = new XMLHttpRequest();
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState === 4) {
+      if (xhr.status !== 200) {
+        console.log("failed to use token");
+      }
+    }
+  };
+  var capTestUrl = window.location.protocol + '//' + window.location.host + '/test_ip_interface_cap';
+  xhr.open("POST", capTestUrl, true);
+  var formData =new FormData();
+  formData.append("token", token);
+  xhr.send(formData);
 }
 
 function setPath() {
@@ -156,6 +239,7 @@ var messageListener = function(event) {
     } else {
       console.log("got token!");
       console.log(event.data.token);
+      console.log(event.data);
       var xhr = new XMLHttpRequest();
       xhr.onreadystatechange = function () {
         if (xhr.readyState === 4) {
@@ -171,6 +255,7 @@ var messageListener = function(event) {
       xhr.open("POST", capSaveUrl, true);
       var formData =new FormData();
       formData.append("token", event.data.token);
+      formData.append("descriptor", JSON.stringify(event.data.descriptor));
       xhr.send(formData);
     }
   }

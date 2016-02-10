@@ -38,5 +38,6 @@ set -euo pipefail
 
 cd /opt/app
 export HOME=/var
+export PYTHONIOENCODING="utf-8"
 [ -f /var/state ] || echo "initial state" > /var/state
 /usr/bin/python3 main.py
