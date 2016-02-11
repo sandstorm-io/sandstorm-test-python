@@ -208,10 +208,94 @@ class HttpDownstream(util.ByteStream.Server):
     def get_page_contents(self):
         return self._page
 
+class DiscardByteStream(util.ByteStream.Server):
+    def __init__(self):
+        print("Constructed DiscardByteStream")
+        sys.stdout.flush()
+        pass
+
+    def write(self, data, **kwargs):
+        print("Ignored data from socket:", data)
+        sys.stdout.flush()
+        pass
+
+    def done(self, **kwargs):
+        print("Ignored close from socket")
+        sys.stdout.flush()
+        pass
+
+    def expectSize(self, size, **kwargs):
+        pass
+
+class TcpPortImpl(capnpip.TcpPort.Server):
+    def __init__(self):
+        #self._connections = []
+        self._connection_promises = []
+        self._fulfilled_connections = False
+
+    def connect(self, downstream, _context, **kwargs):
+        print(_context)
+        print("accepting connection: downstream is", downstream)
+        sys.stdout.flush()
+        # write some bytes to downstream.  Ignore everything
+        future = downstream.write("Hello world!\n").then(
+          lambda x: downstream.done()
+        ).then(
+          lambda x: self.fulfill_connection_promises()
+        )
+        _context.results.upstream = DiscardByteStream()
+        return future
+
+    def fulfill_connection_promises(self):
+        print("Fulfilling all promises...")
+        sys.stdout.flush()
+        self._fulfilled_connections = True
+        for p in self._connection_promises:
+            p.fulfill()
+
+    def await_serviced_connection(self):
+        promise = capnp.PromiseFulfillerPair()
+        if self._fulfilled_connections:
+            promise.fulfill()
+        self._connection_promises.append(promise)
+        return promise.promise
 
 @app.route('/test_ip_interface_cap', methods=['POST'])
 def test_ip_interface_cap():
-    # TODO: test an IpInterface somehow.
+    token = request.form.get('token')
+    print("testing ipinterface token", token)
+    sys.stdout.flush()
+
+    bridge_cap = get_bridge_cap()
+    liveref_promise = bridge_cap.getSandstormApi().then(
+        lambda res: res.api.cast_as(grain.SandstormApi).restore(token=token)
+    )
+    liveref = liveref_promise.wait().cap
+
+    print("liveref:", liveref)
+    sys.stdout.flush()
+
+    port = TcpPortImpl()
+    port_serviced_promise = port.await_serviced_connection()
+    ipinterface = liveref.as_interface(capnpip.IpInterface)
+    print("ipinterface:", ipinterface)
+    sys.stdout.flush()
+    listen_future = ipinterface.listenTcp(portNum=8888, port=port)
+    print("listen_future:", listen_future)
+    sys.stdout.flush()
+    server_handle = listen_future.wait().handle
+    print("server_handle:", server_handle)
+    sys.stdout.flush()
+    print("port_serviced_promise:", port_serviced_promise)
+    sys.stdout.flush()
+    print("waiting for connection...")
+    sys.stdout.flush()
+
+    port_serviced_promise.wait()
+    print("serviced promise, shutting TCP listener down")
+    sys.stdout.flush()
+    del server_handle
+
     return make_response("", 200)
 
 @app.route('/test_ip_network_cap', methods=['POST'])
