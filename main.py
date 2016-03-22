@@ -125,11 +125,33 @@ def savecap():
     """
     token = request.form.get('token')
     descriptor = json.loads(request.form.get('descriptor'))
+
+    # Pad out the base64'd descriptor.
+    len_mod_4 = len(descriptor) % 4
+    if len_mod_4 != 0:
+        descriptor = descriptor + ((4 - len_mod_4) * "=")
+
+    # Parse, and JSONify, the powerbox descriptor as encoded by the Sandstorm frontend.
+    # We ignore the AnyPointer tag value that may exist.  In practice, apps would need to know the
+    # schema to compare them in a content-aware fashion.  And we're not requesting anything with a
+    # tag, so we don't really care.
+    blob = base64.urlsafe_b64decode(descriptor)
+    powerbox_descriptor = grain.PowerboxDescriptor.from_bytes_packed(blob)
+    dict_descriptor = {
+        "quality": powerbox_descriptor.quality.raw,
+        # We stringify tag IDs because JSON can't handle numbers this big.
+        "tags": [ {
+                "id": str(t.id),
+                "value": None,
+            } for t in powerbox_descriptor.tags
+        ],
+    }
+
     print("should save", token)
-    print("descriptor: ", descriptor)
+    print("descriptor: ", dict_descriptor)
     sys.stdout.flush()
     caps = get_saved_caps()
-    caps.append({"token": token, "descriptor": descriptor})
+    caps.append({"token": token, "descriptor": dict_descriptor})
     with open(caps_file, "wb") as f:
         contents = json.dumps(caps)
         f.write(contents.encode('utf-8'))

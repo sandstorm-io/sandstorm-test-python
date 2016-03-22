@@ -127,30 +127,32 @@ p {
 <script type="text/javascript">
 
 interfaces = {
-  uiView: "15831515641881813735",
-  // UiView's capnp id, as a base-10 string, since JS's
-  // numeric type can't handle 64-bit numbers.
+  // Powerbox descriptors for various interface IDs.
 
-  ipNetwork: "12214421258504904768",
-  // Ditto IpNetwork's capnp id
+  uiView: "EAZQAQEAABEBF1EEAQH_5-Jn6pjXtNsAAAA", // 15831515641881813735,
+  // This is produced by:
+  // urlsafeBase64(capnp.serializePacked(PowerboxDescriptor, {
+  //   tags: [
+  //     { id: IpNetwork.typeId }, 
+  //   ],
+  // }))
 
-  ipInterface: "16369547182874744570",
-  // Ditto IpInterface
+  ipNetwork: "EAZQAQEAABEBF1EEAQH_QCAqemtXgqkAAAA", // 12214421258504904768,
+  // As above with uiView, but with IpNetwork's capnp id
+
+  ipInterface: "EAZQAQEAABEBF1EEAQH_-tY-6W5QLOMAAAA", // 16369547182874744570,
+  // As above with uiView, but iwth IpInterface's capnp id
 
   // And so on.  We probably won't test these all, but having them around is handy.
-  ipRemoteHost: "10402707569554174256",
-  tcpPort: "16911595059595970228",
-  udpPort: "14276742948984979918",
+  // ipRemoteHost: "10402707569554174256",
+  // tcpPort: "16911595059595970228",
+  // udpPort: "14276742948984979918",
 };
 
-function doRequest(interfaceId) {
+function doRequest(serializedPowerboxDescriptor) {
   window.parent.postMessage({ powerboxRequest: {
     rpcId: "1",
-    query: [{
-      tags: [{
-        id: interfaceId,
-      }],
-    }],
+    query: [serializedPowerboxDescriptor],
   }}, "*");
 }
 
