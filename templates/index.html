@@ -115,6 +115,11 @@ p {
     </section>
 
     <section>
+      <h2>showWhoHasAccess</h2>
+      <button id="showWhoHasAccess" onclick="showWhoHasAccess();">Show Who Has Access</button>
+    </section>
+
+    <section>
       <h2>renderTemplate</h2>
       <button id="renderTemplate" onclick="renderTemplate();">Render Template</button>
       <iframe id="template-frame"></iframe>
@@ -210,6 +215,11 @@ function setTitle() {
 function startSharing() {
   console.log('calling startSharing');
   window.parent.postMessage({startSharing: {}}, "*");
+}
+
+function showWhoHasAccess() {
+  console.log('calling showWhoHasAccess');
+  window.parent.postMessage({showWhoHasAccess: {}}, "*");
 }
 
 function renderTemplate() {
