@@ -115,8 +115,8 @@ p {
     </section>
 
     <section>
-      <h2>showWhoHasAccess</h2>
-      <button id="showWhoHasAccess" onclick="showWhoHasAccess();">Show Who Has Access</button>
+      <h2>showConnectionGraph</h2>
+      <button id="showConnectionGraph" onclick="showConnectionGraph();">Show Connection Graph</button>
     </section>
 
     <section>
@@ -217,9 +217,9 @@ function startSharing() {
   window.parent.postMessage({startSharing: {}}, "*");
 }
 
-function showWhoHasAccess() {
-  console.log('calling showWhoHasAccess');
-  window.parent.postMessage({showWhoHasAccess: {}}, "*");
+function showConnectionGraph() {
+  console.log('calling showConnectionGraph');
+  window.parent.postMessage({showConnectionGraph: {}}, "*");
 }
 
 function renderTemplate() {
