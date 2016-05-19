@@ -5,6 +5,7 @@ import json
 import os
 import socket
 import sys
+from urllib.parse import urlparse
 
 from flask import Flask
 from flask import request
@@ -231,9 +232,99 @@ class HttpDownstream(util.ByteStream.Server):
         return self._page
 
 
+class DiscardByteStream(util.ByteStream.Server):
+    def __init__(self):
+        print("Constructed DiscardByteStream")
+        sys.stdout.flush()
+        pass
+
+    def write(self, data, **kwargs):
+        print("Ignored data from socket:", data)
+        sys.stdout.flush()
+        pass
+
+    def done(self, **kwargs):
+        print("Ignored close from socket")
+        sys.stdout.flush()
+        pass
+
+    def expectSize(self, size, **kwargs):
+        pass
+
+class TcpPortImpl(capnpip.TcpPort.Server):
+    def __init__(self):
+        #self._connections = []
+        self._connection_promises = []
+        self._fulfilled_connections = False
+
+    def connect(self, downstream, _context, **kwargs):
+        print(_context)
+        print("accepting connection: downstream is", downstream)
+        sys.stdout.flush()
+        # write some bytes to downstream.  Ignore everything
+        future = downstream.write("tcptest").then(
+          lambda x: downstream.done()
+        ).then(
+          lambda x: self.fulfill_connection_promises()
+        )
+        _context.results.upstream = DiscardByteStream()
+        return future
+
+    def fulfill_connection_promises(self):
+        print("Fulfilling all promises...")
+        sys.stdout.flush()
+        self._fulfilled_connections = True
+        for p in self._connection_promises:
+            p.fulfill()
+
+    def await_serviced_connection(self):
+        promise = capnp.PromiseFulfillerPair()
+        if self._fulfilled_connections:
+            promise.fulfill()
+        self._connection_promises.append(promise)
+        return promise.promise
+
+
 @app.route('/test_ip_interface_cap', methods=['POST'])
 def test_ip_interface_cap():
-    # TODO: test an IpInterface somehow.
+    token = request.form.get('token')
+    portNum = int(request.form.get('port'), 10)
+    print("testing ipinterface token", token, "port", portNum)
+    sys.stdout.flush()
+
+    if not portNum:
+        return make_response("Port required.", 400)
+
+    bridge_cap = get_bridge_cap()
+    liveref_promise = bridge_cap.getSandstormApi().then(
+        lambda res: res.api.cast_as(grain.SandstormApi).restore(token=token)
+    )
+    liveref = liveref_promise.wait().cap
+
+    print("liveref:", liveref)
+    sys.stdout.flush()
+
+    port = TcpPortImpl()
+    port_serviced_promise = port.await_serviced_connection()
+    ipinterface = liveref.as_interface(capnpip.IpInterface)
+    print("ipinterface:", ipinterface)
+    sys.stdout.flush()
+    listen_future = ipinterface.listenTcp(portNum=portNum, port=port)
+    print("listen_future:", listen_future)
+    sys.stdout.flush()
+    server_handle = listen_future.wait().handle
+    print("server_handle:", server_handle)
+    sys.stdout.flush()
+    print("port_serviced_promise:", port_serviced_promise)
+    sys.stdout.flush()
+    print("waiting for connection...")
+    sys.stdout.flush()
+
+    port_serviced_promise.wait()
+    print("serviced promise, shutting TCP listener down")
+    sys.stdout.flush()
+    del server_handle
+
     return make_response("", 200)
 
 @app.route('/test_ip_network_cap', methods=['POST'])
@@ -243,8 +334,13 @@ def test_ip_network_cap():
     and reading the response.
     """
     token = request.form.get('token')
-    print("testing ipnetwork token", token)
+    urlstring = request.form.get('url')
+    url = urlparse(urlstring)
+    print("testing ipnetwork token", token, "url", url)
     sys.stdout.flush()
+
+    if url.scheme != "http":
+        return make_response("URL scheme must be http.", 400)
 
     bridge_cap = get_bridge_cap()
     liveref_promise = bridge_cap.getSandstormApi().then(
@@ -252,24 +348,31 @@ def test_ip_network_cap():
     )
     liveref = liveref_promise.wait().cap
 
-    remotehost_promise = liveref.as_interface(capnpip.IpNetwork).getRemoteHostByName(address="zarvox.org")
+    host = url.netloc.split(":")[0]
+    remotehost_promise = liveref.as_interface(capnpip.IpNetwork).getRemoteHostByName(address=host)
     remotehost = remotehost_promise.wait().host
 
-    http_port_promise = remotehost.cast_as(capnpip.IpRemoteHost).getTcpPort(portNum=80)
+    http_port_promise = remotehost.cast_as(capnpip.IpRemoteHost).getTcpPort(portNum=url.port or 80)
     http_port = http_port_promise.wait().port
 
     reply_stream = HttpDownstream()
     stream_promise = http_port.connect(reply_stream)
     request_stream = stream_promise.wait().upstream
     # N.B. get this future before
-    request_stream.write("GET / HTTP/1.0\n\n").wait()
+    path = url.path or "/"
+    if url.query:
+        path += "?" + url.query
 
-    request_stream.done().wait()
+    request_text = "GET {path} HTTP/1.1\r\nHost: {host}\r\nAccept: */*\r\nConnection: close\r\n\r\n".format(path=path, host=url.netloc)
+    request_stream.write(request_text).wait()
+
     print("sent request")
     sys.stdout.flush()
     reply_stream_done_future = reply_stream.await_response()
     reply_stream_done_future.wait()
     page = reply_stream.get_page_contents()
+    # only close output stream once we've read the response
+    request_stream.done().wait()
     print(page)
     sys.stdout.flush()
 

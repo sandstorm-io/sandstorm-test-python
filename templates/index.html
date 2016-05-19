@@ -69,9 +69,35 @@ p {
               {% if cap.descriptor.tags[0].id == "15831515641881813735" %}
               <button class="offer-cap" data-cap-id="{{cap.token}}" onclick="doOffer('{{cap.token}}');">Offer</button>
               {% elif cap.descriptor.tags[0].id == "12214421258504904768" %}
-              <button class="test-cap" data-cap-id="{{cap.token}}" onclick="useIpNetwork('{{cap.token}}');">Test</button>
+              <form data-cap-id="{{cap.token}}"
+                    class="test-ip-network"
+                    onSubmit="useIpNetwork('{{cap.token}}'); return false;">
+                <label>Url (HTTP only):
+                  <input type="text" />
+                </label>
+                <button type="button"
+                        class="test-ip-network"
+                        data-cap-id="{{cap.token}}"
+                        onclick="useIpNetwork('{{cap.token}}');">
+                  Fetch
+                </button>
+                <div class="result"></div>
+              </form>
               {% elif cap.descriptor.tags[0].id == "16369547182874744570" %}
-              <button class="test-cap" data-cap-id="{{cap.token}}" onclick="useIpInterface('{{cap.token}}');">Listen</button>
+              <form data-cap-id="{{cap.token}}"
+                    class="test-ip-interface"
+                    onSubmit="useIpInterface('{{cap.token}}'); return false;">
+                <label>Port:
+                  <input type="number" />
+                </label>
+                <button type="button"
+                        class="test-ip-interface"
+                        data-cap-id="{{cap.token}}"
+                        onclick="useIpInterface('{{cap.token}}');">
+                  Listen
+                </button>
+                <div class="result"></div>
+              </form>
               {% endif %}
             </td>
           </tr>
@@ -169,12 +195,22 @@ function doOffer(capId) {
   xhr.send();
 }
 
-function useIpNetwork(token) {
+function useIpNetwork(token, url) {
+  var formSelector = 'form[data-cap-id="' + token + '"]';
+  var inputSelector = formSelector + ' input[type=text]';
+  var resultSelector = formSelector + ' div.result';
+  var urlInput = document.querySelector(inputSelector);
+  var url = urlInput.value;
   var xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function () {
     if (xhr.readyState === 4) {
       if (xhr.status !== 200) {
         console.log("failed to use token");
+      } else {
+        console.log(xhr);
+        resultField = document.querySelector(resultSelector);
+        console.log(resultField);
+        resultField.innerText = xhr.responseText;
       }
     }
   };
@@ -182,15 +218,24 @@ function useIpNetwork(token) {
   xhr.open("POST", capTestUrl, true);
   var formData =new FormData();
   formData.append("token", token);
+  formData.append("url", url);
   xhr.send(formData);
 }
 
 function useIpInterface(token) {
+  var formSelector = 'form[data-cap-id="' + token + '"]';
+  var inputSelector = formSelector + ' input[type=number]';
+  var resultSelector = formSelector + ' div.result';
+  var portInput = document.querySelector(inputSelector);
+  var port = portInput.value;
   var xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function () {
     if (xhr.readyState === 4) {
       if (xhr.status !== 200) {
         console.log("failed to use token");
+      } else {
+        resultField = document.querySelector(resultSelector);
+        resultField.innerText = "success";
       }
     }
   };
@@ -198,6 +243,7 @@ function useIpInterface(token) {
   xhr.open("POST", capTestUrl, true);
   var formData =new FormData();
   formData.append("token", token);
+  formData.append("port", port);
   xhr.send(formData);
 }
 
