@@ -210,7 +210,7 @@ function useIpNetwork(token, url) {
         console.log(xhr);
         resultField = document.querySelector(resultSelector);
         console.log(resultField);
-        resultField.innerText = xhr.responseText;
+        resultField.textContent = xhr.responseText;
       }
     }
   };
@@ -235,7 +235,7 @@ function useIpInterface(token) {
         console.log("failed to use token");
       } else {
         resultField = document.querySelector(resultSelector);
-        resultField.innerText = "success";
+        resultField.textContent = "success";
       }
     }
   };
