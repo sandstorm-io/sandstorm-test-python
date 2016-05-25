@@ -330,8 +330,8 @@ def test_ip_interface_cap():
 @app.route('/test_ip_network_cap', methods=['POST'])
 def test_ip_network_cap():
     """
-    Tests an IpNetwork capability by connecting to zarvox.org on port 80, sending an HTTP request,
-    and reading the response.
+    Tests an IpNetwork capability by connecting to the requested host on the requested port, sending
+    an HTTP request, and reading the response.
     """
     token = request.form.get('token')
     urlstring = request.form.get('url')
