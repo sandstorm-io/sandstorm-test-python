@@ -29,6 +29,12 @@ util = capnp.load("/opt/sandstorm/latest/usr/include/sandstorm/util.capnp",
             ]
         )
 
+powerbox = capnp.load("/opt/sandstorm/latest/usr/include/sandstorm/powerbox.capnp",
+            imports=[
+                "/opt/sandstorm/latest/usr/include",
+            ]
+        )
+
 grain = capnp.load("/opt/sandstorm/latest/usr/include/sandstorm/grain.capnp",
             imports=[
                 "/opt/sandstorm/latest/usr/include",
@@ -124,7 +130,7 @@ def savecap():
     and pass that on when we later do an offer_cap(), rather than forging a
     new PowerboxDescriptor from whole cloth.
     """
-    token = request.form.get('token')
+    request_token = request.form.get('token')
     descriptor = json.loads(request.form.get('descriptor'))
 
     # Pad out the base64'd descriptor.
@@ -137,7 +143,7 @@ def savecap():
     # schema to compare them in a content-aware fashion.  And we're not requesting anything with a
     # tag, so we don't really care.
     blob = base64.urlsafe_b64decode(descriptor)
-    powerbox_descriptor = grain.PowerboxDescriptor.from_bytes_packed(blob)
+    powerbox_descriptor = powerbox.PowerboxDescriptor.from_bytes_packed(blob)
     dict_descriptor = {
         "quality": powerbox_descriptor.quality.raw,
         # We stringify tag IDs because JSON can't handle numbers this big.
@@ -147,6 +153,19 @@ def savecap():
             } for t in powerbox_descriptor.tags
         ],
     }
+
+
+    bridge_cap = get_bridge_cap()
+    liveref_promise = bridge_cap.getSandstormApi().then(
+        lambda res: res.api.claimRequest(requestToken=request_token)
+    )
+    liveref = liveref_promise.wait().cap
+
+    token_promise = bridge_cap.getSandstormApi().then(
+        lambda res: res.api.save(liveref)
+    )
+    btoken = token_promise.wait().token
+    token = base64.urlsafe_b64encode(btoken).decode("ascii")
 
     print("should save", token)
     print("descriptor: ", dict_descriptor)
@@ -287,7 +306,7 @@ class TcpPortImpl(capnpip.TcpPort.Server):
 
 @app.route('/test_ip_interface_cap', methods=['POST'])
 def test_ip_interface_cap():
-    token = request.form.get('token')
+    token = base64.urlsafe_b64decode(request.form.get('token'))
     portNum = int(request.form.get('port'), 10)
     print("testing ipinterface token", token, "port", portNum)
     sys.stdout.flush()
@@ -333,7 +352,7 @@ def test_ip_network_cap():
     Tests an IpNetwork capability by connecting to the requested host on the requested port, sending
     an HTTP request, and reading the response.
     """
-    token = request.form.get('token')
+    token = base64.urlsafe_b64decode(request.form.get('token'))
     urlstring = request.form.get('url')
     url = urlparse(urlstring)
     print("testing ipnetwork token", token, "url", url)
@@ -381,6 +400,8 @@ def test_ip_network_cap():
 @app.route('/caps/<cap_id>', methods=['POST'])
 def offer_cap(cap_id):
     print("should offer", cap_id)
+    cap_id = base64.urlsafe_b64decode(cap_id)
+
     sys.stdout.flush()
     # Restore the sturdyref into a liveref
     bridge_cap = get_bridge_cap()
@@ -396,9 +417,9 @@ def offer_cap(cap_id):
         session_ctx_resp, liveref_resp = res
         session_ctx = session_ctx_resp.context.cast_as(hack_session.HackSessionContext)
         liveref = liveref_resp.cap
-        uiViewTag = grain.PowerboxDescriptor.Tag.new_message(id=grain.UiView.schema.node.id)
-        descriptor = grain.PowerboxDescriptor.new_message(tags=[uiViewTag])
-        displayInfo = grain.PowerboxDisplayInfo.new_message(
+        uiViewTag = powerbox.PowerboxDescriptor.Tag.new_message(id=grain.UiView.schema.node.id)
+        descriptor = powerbox.PowerboxDescriptor.new_message(tags=[uiViewTag])
+        displayInfo = powerbox.PowerboxDisplayInfo.new_message(
             title=util.LocalizedText.new_message(defaultText="some title"),
             verbPhrase=util.LocalizedText.new_message(defaultText="some verbPhrase"),
             description=util.LocalizedText.new_message(defaultText="some description"),
