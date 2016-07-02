@@ -156,10 +156,11 @@ def savecap():
 
 
     bridge_cap = get_bridge_cap()
-    liveref_promise = bridge_cap.getSandstormApi().then(
-        lambda res: res.api.claimRequest(requestToken=request_token)
-    )
-    liveref = liveref_promise.wait().cap
+    session_id = request.headers.get("X-Sandstorm-Session-Id", "")
+    context_response = bridge_cap.getSessionContext(id=session_id).wait()
+    context = context_response.context
+    liveref_response = context.claimRequest(requestToken=request_token).wait()
+    liveref = liveref_response.cap
 
     token_promise = bridge_cap.getSandstormApi().then(
         lambda res: res.api.save(liveref)
