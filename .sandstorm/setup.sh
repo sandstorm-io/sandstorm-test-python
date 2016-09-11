@@ -27,9 +27,6 @@ apt-get install -y build-essential libcap-dev xz-utils zip unzip imagemagick \
     strace curl clang discount git autoconf pkg-config libtool \
     python3 python3-pip python3-dev
 
-# Install meteor as vagrant user
-su -c "curl https://install.meteor.com/ | sh" vagrant
-
 # Install capnproto from source, since Sandstorm currently depends on unreleased capnproto features.
 if [ ! -e /usr/local/bin/capnp ]; then
     [ -d capnproto ] || git clone https://github.com/sandstorm-io/capnproto
