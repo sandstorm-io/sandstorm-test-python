@@ -35,6 +35,12 @@ powerbox = capnp.load("/opt/sandstorm/latest/usr/include/sandstorm/powerbox.capn
             ]
         )
 
+identity = capnp.load("/opt/sandstorm/latest/usr/include/sandstorm/identity.capnp",
+            imports=[
+                "/opt/sandstorm/latest/usr/include",
+            ]
+        )
+
 grain = capnp.load("/opt/sandstorm/latest/usr/include/sandstorm/grain.capnp",
             imports=[
                 "/opt/sandstorm/latest/usr/include",
@@ -397,6 +403,28 @@ def test_ip_network_cap():
     sys.stdout.flush()
 
     return make_response(page, 200)
+
+@app.route('/test_identity_cap', methods=['POST'])
+def test_identity_cap():
+    token = base64.urlsafe_b64decode(request.form.get('token'))
+    print("testing identity token", token)
+    sys.stderr.flush()
+    bridge_cap = get_bridge_cap()
+    liveref_promise = bridge_cap.getSandstormApi().then(
+        lambda res: res.api.cast_as(grain.SandstormApi).restore(token=token)
+    )
+    liveref = liveref_promise.wait().cap
+
+    identity_cap = liveref.as_interface(identity.Identity)
+    profile = identity_cap.getProfile().wait().profile
+    picture_url = profile.picture.getUrl().wait();
+
+    response = json.dumps({
+        "displayName": profile.displayName.defaultText,
+        "preferredHandle": profile.preferredHandle,
+        "pictureUrl": "{}://{}".format(picture_url.protocol, picture_url.hostPath),
+    })
+    return make_response(response, 200)
 
 @app.route('/caps/<cap_id>', methods=['POST'])
 def offer_cap(cap_id):

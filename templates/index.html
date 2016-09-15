@@ -37,6 +37,7 @@ p {
       <h2>Powerbox request</h2>
       <ul>
         <li><button id='powerbox-request-uiview' onclick="doRequest(interfaces.uiView);">Request UiView</button></li>
+        <li><button id='powerbox-request-identity' onclick="doRequest(interfaces.identity);">Request Identity</button></li>
         <li><button id='powerbox-request-ipnetwork' onclick="doRequest(interfaces.ipNetwork);">Request IpNetwork</button></li>
         <li><button id='powerbox-request-ipinterface' onclick="doRequest(interfaces.ipInterface);">Request IpInterface</button></li>
       </ul>
@@ -57,6 +58,8 @@ p {
           <tr>
             {% if cap.descriptor.tags[0].id == "15831515641881813735" %}
               <td>UiView</td>
+            {% elif cap.descriptor.tags[0].id == "13872380404802116888" %}
+              <td>Identity</td>
             {% elif cap.descriptor.tags[0].id == "12214421258504904768" %}
               <td>IpNetwork</td>
             {% elif cap.descriptor.tags[0].id == "16369547182874744570" %}
@@ -68,6 +71,18 @@ p {
             <td>
               {% if cap.descriptor.tags[0].id == "15831515641881813735" %}
               <button class="offer-cap" data-cap-id="{{cap.token}}" onclick="doOffer('{{cap.token}}');">Offer</button>
+              {% elif cap.descriptor.tags[0].id == "13872380404802116888" %}
+              <form data-cap-id="{{cap.token}}"
+                    class="test-identity"
+                    onSubmit="useIdentity('{{cap.token}}'); return false;">
+                <button type="button"
+                        class="test-identity"
+                        data-cap-id="{{cap.token}}"
+                        onclick="useIdentity('{{cap.token}}');">
+                  Fetch profile
+                </button>
+                <div class="result"></div>
+              </form>
               {% elif cap.descriptor.tags[0].id == "12214421258504904768" %}
               <form data-cap-id="{{cap.token}}"
                     class="test-ip-network"
@@ -168,11 +183,14 @@ interfaces = {
   //   ],
   // }))
 
+  identity: "EAZQAQEAABEBF1EEAQH_GN1RqXqYhMAAAAA", // 13872380404802116888,
+  // As above with uiView, but with Identity's capnp id
+
   ipNetwork: "EAZQAQEAABEBF1EEAQH_QCAqemtXgqkAAAA", // 12214421258504904768,
   // As above with uiView, but with IpNetwork's capnp id
 
   ipInterface: "EAZQAQEAABEBF1EEAQH_-tY-6W5QLOMAAAA", // 16369547182874744570,
-  // As above with uiView, but iwth IpInterface's capnp id
+  // As above with uiView, but with IpInterface's capnp id
 
   // And so on.  We probably won't test these all, but having them around is handy.
   // ipRemoteHost: "10402707569554174256",
@@ -193,6 +211,29 @@ function doOffer(capId) {
   var capOfferUrl = window.location.protocol + '//' + window.location.host + '/caps/' + capId;
   xhr.open("POST", capOfferUrl, true);
   xhr.send();
+}
+
+function useIdentity(token) {
+  var formSelector = 'form[data-cap-id="' + token + '"]';
+  var inputSelector = formSelector + ' input[type=text]';
+  var resultSelector = formSelector + ' div.result';
+  var xhr = new XMLHttpRequest();
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState === 4) {
+      resultField = document.querySelector(resultSelector);
+      if (xhr.status !== 200) {
+        resultField.textContent = "failed to fetch profile";
+      } else {
+        var profile = JSON.parse(xhr.responseText);
+        resultField.textContent = profile.displayName;
+      }
+    }
+  };
+  var capTestUrl = window.location.protocol + '//' + window.location.host + '/test_identity_cap';
+  xhr.open("POST", capTestUrl, true);
+  var formData =new FormData();
+  formData.append("token", token);
+  xhr.send(formData);
 }
 
 function useIpNetwork(token, url) {
