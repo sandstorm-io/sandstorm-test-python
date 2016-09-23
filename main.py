@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import base64
+import binascii
 import json
 import os
 import socket
@@ -410,16 +411,19 @@ def test_identity_cap():
     print("testing identity token", token)
     sys.stderr.flush()
     bridge_cap = get_bridge_cap()
-    liveref_promise = bridge_cap.getSandstormApi().then(
-        lambda res: res.api.cast_as(grain.SandstormApi).restore(token=token)
-    )
+    api = bridge_cap.getSandstormApi().api.cast_as(grain.SandstormApi)
+
+    liveref_promise = api.restore(token=token)
     liveref = liveref_promise.wait().cap
 
     identity_cap = liveref.as_interface(identity.Identity)
     profile = identity_cap.getProfile().wait().profile
     picture_url = profile.picture.getUrl().wait();
 
+    identity_id = api.getIdentityId(identity=identity_cap).wait().id;
+
     response = json.dumps({
+        "id": binascii.hexlify(identity_id).decode('utf8'),
         "displayName": profile.displayName.defaultText,
         "preferredHandle": profile.preferredHandle,
         "pictureUrl": "{}://{}".format(picture_url.protocol, picture_url.hostPath),
