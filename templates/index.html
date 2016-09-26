@@ -231,7 +231,7 @@ function useIdentity(token) {
   };
   var capTestUrl = window.location.protocol + '//' + window.location.host + '/test_identity_cap';
   xhr.open("POST", capTestUrl, true);
-  var formData =new FormData();
+  var formData = new FormData();
   formData.append("token", token);
   xhr.send(formData);
 }
@@ -257,7 +257,7 @@ function useIpNetwork(token, url) {
   };
   var capTestUrl = window.location.protocol + '//' + window.location.host + '/test_ip_network_cap';
   xhr.open("POST", capTestUrl, true);
-  var formData =new FormData();
+  var formData = new FormData();
   formData.append("token", token);
   formData.append("url", url);
   xhr.send(formData);
@@ -282,7 +282,7 @@ function useIpInterface(token) {
   };
   var capTestUrl = window.location.protocol + '//' + window.location.host + '/test_ip_interface_cap';
   xhr.open("POST", capTestUrl, true);
-  var formData =new FormData();
+  var formData = new FormData();
   formData.append("token", token);
   formData.append("port", port);
   xhr.send(formData);
@@ -352,7 +352,7 @@ var messageListener = function(event) {
       };
       var capSaveUrl = window.location.protocol + '//' + window.location.host + '/caps';
       xhr.open("POST", capSaveUrl, true);
-      var formData =new FormData();
+      var formData = new FormData();
       formData.append("token", event.data.token);
       formData.append("descriptor", JSON.stringify(event.data.descriptor));
       xhr.send(formData);
