@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import base64
+import binascii
 import json
 import os
 import socket
@@ -30,6 +31,12 @@ util = capnp.load("/opt/sandstorm/latest/usr/include/sandstorm/util.capnp",
         )
 
 powerbox = capnp.load("/opt/sandstorm/latest/usr/include/sandstorm/powerbox.capnp",
+            imports=[
+                "/opt/sandstorm/latest/usr/include",
+            ]
+        )
+
+identity = capnp.load("/opt/sandstorm/latest/usr/include/sandstorm/identity.capnp",
             imports=[
                 "/opt/sandstorm/latest/usr/include",
             ]
@@ -397,6 +404,31 @@ def test_ip_network_cap():
     sys.stdout.flush()
 
     return make_response(page, 200)
+
+@app.route('/test_identity_cap', methods=['POST'])
+def test_identity_cap():
+    token = base64.urlsafe_b64decode(request.form.get('token'))
+    print("testing identity token", token)
+    sys.stderr.flush()
+    bridge_cap = get_bridge_cap()
+    api = bridge_cap.getSandstormApi().api.cast_as(grain.SandstormApi)
+
+    liveref_promise = api.restore(token=token)
+    liveref = liveref_promise.wait().cap
+
+    identity_cap = liveref.as_interface(identity.Identity)
+    profile = identity_cap.getProfile().wait().profile
+    picture_url = profile.picture.getUrl().wait();
+
+    identity_id = api.getIdentityId(identity=identity_cap).wait().id;
+
+    response = json.dumps({
+        "id": binascii.hexlify(identity_id).decode('utf8'),
+        "displayName": profile.displayName.defaultText,
+        "preferredHandle": profile.preferredHandle,
+        "pictureUrl": "{}://{}".format(picture_url.protocol, picture_url.hostPath),
+    })
+    return make_response(response, 200)
 
 @app.route('/caps/<cap_id>', methods=['POST'])
 def offer_cap(cap_id):
