@@ -307,9 +307,10 @@ class TcpPortImpl(capnpip.TcpPort.Server):
         self._connection_promises.append(promise)
         return promise.promise
 
+ip_interface_ongoing_tests = {}
 
-@app.route('/test_ip_interface_cap', methods=['POST'])
-def test_ip_interface_cap():
+@app.route('/start_test_ip_interface_cap', methods=['POST'])
+def start_test_ip_interface_cap():
     token = base64.urlsafe_b64decode(request.form.get('token'))
     portNum = int(request.form.get('port'), 10)
     debug("testing ipinterface token", token, "port", portNum)
@@ -334,12 +335,41 @@ def test_ip_interface_cap():
     server_handle = listen_future.wait().handle
     debug("server_handle:", server_handle)
     debug("port_serviced_promise:", port_serviced_promise)
+
+    handle_id = base64.b64encode(os.urandom(8)).decode('utf-8');
+    ip_interface_ongoing_tests[handle_id] = {
+        "promise": port_serviced_promise,
+        "bridge_cap": bridge_cap, # We need to keep the bridge cap around, since it owns the socket
+        "server_handle": server_handle,
+    }
+
+    return make_response(json.dumps({ "handleId": handle_id }), 200)
+
+@app.route('/complete_test_ip_interface_cap', methods=['POST'])
+def complete_test_ip_interface_cap():
+    handle_id = request.form.get('handleId')
+    debug("awaiting ipinterface token usage completion")
+
+    if handle_id not in ip_interface_ongoing_tests:
+        raise Exception("Invalid handle id for awaiting IP network test completion")
+
+    ongoing_test = ip_interface_ongoing_tests[handle_id]
+    del ip_interface_ongoing_tests[handle_id]
+
     debug("waiting for connection...")
+    port_serviced_promise = ongoing_test["promise"]
+    server_handle = ongoing_test["server_handle"]
+    bridge_cap = ongoing_test["bridge_cap"]
+    del ongoing_test
+
+    debug(port_serviced_promise)
+    debug(server_handle)
 
     port_serviced_promise.wait()
     debug("serviced promise, shutting TCP listener down")
     del port_serviced_promise
     del server_handle
+    del bridge_cap
 
     return make_response("", 200)
 
