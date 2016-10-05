@@ -71,6 +71,10 @@ app = Flask(__name__)
 
 caps_file = '/var/cap-info.json'
 
+def debug(*args, **kwargs):
+    print(*args, **kwargs)
+    sys.stdout.flush()
+
 def get_bridge_cap():
     # Connect to the socket exposed by sandstorm-http-bridge
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -175,9 +179,8 @@ def savecap():
     btoken = token_promise.wait().token
     token = base64.urlsafe_b64encode(btoken).decode("ascii")
 
-    print("should save", token)
-    print("descriptor: ", dict_descriptor)
-    sys.stdout.flush()
+    debug("should save", token)
+    debug("descriptor: ", dict_descriptor)
     caps = get_saved_caps()
     caps.append({"token": token, "descriptor": dict_descriptor})
     with open(caps_file, "wb") as f:
@@ -209,8 +212,7 @@ class HttpDownstream(util.ByteStream.Server):
                 self.fulfill_header_promises()
 
     def done(self, **kwargs):
-        print("done() called")
-        sys.stdout.flush()
+        debug("done() called")
         if self._state != "READ_BODY":
             raise Exception("Never received page body")
         self._page = self._buf
@@ -227,8 +229,7 @@ class HttpDownstream(util.ByteStream.Server):
 
     def expectSize(self, size, **kwargs):
         # ignore this for now
-        print("stream should expect size", size)
-        sys.stdout.flush()
+        debug("stream should expect size", size)
         pass
 
     def await_headers(self):
@@ -261,18 +262,15 @@ class HttpDownstream(util.ByteStream.Server):
 
 class DiscardByteStream(util.ByteStream.Server):
     def __init__(self):
-        print("Constructed DiscardByteStream")
-        sys.stdout.flush()
+        debug("Constructed DiscardByteStream")
         pass
 
     def write(self, data, **kwargs):
-        print("Ignored data from socket:", data)
-        sys.stdout.flush()
+        debug("Ignored data from socket:", data)
         pass
 
     def done(self, **kwargs):
-        print("Ignored close from socket")
-        sys.stdout.flush()
+        debug("Ignored close from socket")
         pass
 
     def expectSize(self, size, **kwargs):
@@ -285,9 +283,8 @@ class TcpPortImpl(capnpip.TcpPort.Server):
         self._fulfilled_connections = False
 
     def connect(self, downstream, _context, **kwargs):
-        print(_context)
-        print("accepting connection: downstream is", downstream)
-        sys.stdout.flush()
+        debug(_context)
+        debug("accepting connection: downstream is", downstream)
         # write some bytes to downstream.  Ignore everything
         future = downstream.write("tcptest").then(
           lambda x: downstream.done()
@@ -298,8 +295,7 @@ class TcpPortImpl(capnpip.TcpPort.Server):
         return future
 
     def fulfill_connection_promises(self):
-        print("Fulfilling all promises...")
-        sys.stdout.flush()
+        debug("Fulfilling all promises...")
         self._fulfilled_connections = True
         for p in self._connection_promises:
             p.fulfill()
@@ -316,8 +312,7 @@ class TcpPortImpl(capnpip.TcpPort.Server):
 def test_ip_interface_cap():
     token = base64.urlsafe_b64decode(request.form.get('token'))
     portNum = int(request.form.get('port'), 10)
-    print("testing ipinterface token", token, "port", portNum)
-    sys.stdout.flush()
+    debug("testing ipinterface token", token, "port", portNum)
 
     if not portNum:
         return make_response("Port required.", 400)
@@ -328,28 +323,22 @@ def test_ip_interface_cap():
     )
     liveref = liveref_promise.wait().cap
 
-    print("liveref:", liveref)
-    sys.stdout.flush()
+    debug("liveref:", liveref)
 
     port = TcpPortImpl()
     port_serviced_promise = port.await_serviced_connection()
     ipinterface = liveref.as_interface(capnpip.IpInterface)
-    print("ipinterface:", ipinterface)
-    sys.stdout.flush()
+    debug("ipinterface:", ipinterface)
     listen_future = ipinterface.listenTcp(portNum=portNum, port=port)
-    print("listen_future:", listen_future)
-    sys.stdout.flush()
+    debug("listen_future:", listen_future)
     server_handle = listen_future.wait().handle
-    print("server_handle:", server_handle)
-    sys.stdout.flush()
-    print("port_serviced_promise:", port_serviced_promise)
-    sys.stdout.flush()
-    print("waiting for connection...")
-    sys.stdout.flush()
+    debug("server_handle:", server_handle)
+    debug("port_serviced_promise:", port_serviced_promise)
+    debug("waiting for connection...")
 
     port_serviced_promise.wait()
-    print("serviced promise, shutting TCP listener down")
-    sys.stdout.flush()
+    debug("serviced promise, shutting TCP listener down")
+    del port_serviced_promise
     del server_handle
 
     return make_response("", 200)
@@ -363,8 +352,7 @@ def test_ip_network_cap():
     token = base64.urlsafe_b64decode(request.form.get('token'))
     urlstring = request.form.get('url')
     url = urlparse(urlstring)
-    print("testing ipnetwork token", token, "url", url)
-    sys.stdout.flush()
+    debug("testing ipnetwork token", token, "url", url)
 
     if url.scheme != "http":
         return make_response("URL scheme must be http.", 400)
@@ -393,15 +381,13 @@ def test_ip_network_cap():
     request_text = "GET {path} HTTP/1.1\r\nHost: {host}\r\nAccept: */*\r\nConnection: close\r\n\r\n".format(path=path, host=url.netloc)
     request_stream.write(request_text).wait()
 
-    print("sent request")
-    sys.stdout.flush()
+    debug("sent request")
     reply_stream_done_future = reply_stream.await_response()
     reply_stream_done_future.wait()
     page = reply_stream.get_page_contents()
     # only close output stream once we've read the response
     request_stream.done().wait()
-    print(page)
-    sys.stdout.flush()
+    debug(page)
 
     return make_response(page, 200)
 
@@ -432,10 +418,9 @@ def test_identity_cap():
 
 @app.route('/caps/<cap_id>', methods=['POST'])
 def offer_cap(cap_id):
-    print("should offer", cap_id)
+    debug("should offer", cap_id)
     cap_id = base64.urlsafe_b64decode(cap_id)
 
-    sys.stdout.flush()
     # Restore the sturdyref into a liveref
     bridge_cap = get_bridge_cap()
     liveref_promise = bridge_cap.getSandstormApi().then(
