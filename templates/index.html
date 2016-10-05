@@ -266,21 +266,55 @@ function useIpNetwork(token, url) {
 function useIpInterface(token) {
   var formSelector = 'form[data-cap-id="' + token + '"]';
   var inputSelector = formSelector + ' input[type=number]';
+  var buttonSelector = formSelector + ' button';
   var resultSelector = formSelector + ' div.result';
+
   var portInput = document.querySelector(inputSelector);
+  var button = document.querySelector(buttonSelector);
+  var resultDiv = document.querySelector(resultSelector);
+
+  // Disable port input and button while RPCs are away
+  portInput.disabled = true;
+  button.disabled = true;
+
   var port = portInput.value;
   var xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function () {
     if (xhr.readyState === 4) {
       if (xhr.status !== 200) {
         console.log("failed to use token");
+        resultDiv.textContent = "failed to listen: " + xhr.status;
       } else {
-        resultField = document.querySelector(resultSelector);
-        resultField.textContent = "success";
+        // This confirms that the server is listening.
+        var resp = JSON.parse(xhr.responseText);
+        console.log(resp);
+        var handleId = resp.handleId;
+
+        resultDiv.textContent = "listening on :" + port;
+        var xhr2 = new XMLHttpRequest();
+        xhr2.onreadystatechange = function () {
+          if (xhr2.readyState === 4) {
+            if (xhr2.status !== 200) {
+              console.log("failed to finish ip interface usage")
+              resultDiv.textContent = "failed to finish ip interface usage: " + xhr2.status;
+            } else {
+              resultDiv.textContent = "success"
+            }
+
+            // reenable form again
+            portInput.disabled = false;
+            button.disabled = false;
+          }
+        };
+        var capFinishUrl = window.location.protocol + '//' + window.location.host + '/complete_test_ip_interface_cap';
+        xhr2.open("POST", capFinishUrl, true);
+        var formData2 = new FormData();
+        formData2.append("handleId", handleId);
+        xhr2.send(formData2);
       }
     }
   };
-  var capTestUrl = window.location.protocol + '//' + window.location.host + '/test_ip_interface_cap';
+  var capTestUrl = window.location.protocol + '//' + window.location.host + '/start_test_ip_interface_cap';
   xhr.open("POST", capTestUrl, true);
   var formData = new FormData();
   formData.append("token", token);
