@@ -246,7 +246,8 @@ function useIpNetwork(token, url) {
   xhr.onreadystatechange = function () {
     if (xhr.readyState === 4) {
       if (xhr.status !== 200) {
-        console.log("failed to use token");
+        console.warn("failed to use token");
+        console.warn(xhr);
       } else {
         console.log(xhr);
         resultField = document.querySelector(resultSelector);
