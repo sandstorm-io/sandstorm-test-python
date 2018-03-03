@@ -4,6 +4,7 @@ set -euo pipefail
 CURL_OPTS="--silent --show-error"
 echo localhost > /etc/hostname
 hostname localhost
+apt-get install -y curl
 curl $CURL_OPTS https://install.sandstorm.io/ > /host-dot-sandstorm/caches/install.sh
 SANDSTORM_CURRENT_VERSION=$(curl $CURL_OPTS -f "https://install.sandstorm.io/dev?from=0&type=install")
 SANDSTORM_PACKAGE="sandstorm-$SANDSTORM_CURRENT_VERSION.tar.xz"
